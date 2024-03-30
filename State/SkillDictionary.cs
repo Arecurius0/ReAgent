@@ -52,6 +52,7 @@ public class SkillDictionary
                     x.CanBeUsedWithWeapon &&
                     x.Cost <= currentManaPool &&
                     x.GetStat(GameStat.LifeCost) < currentHpPool,
+                    x.IsOnCooldown,
                     x.GetStat(GameStat.LifeCost),
                     actorSkillsCooldownDict.ContainsKey(x.InternalName) ? actorSkillsCooldownDict[x.InternalName] : null,
                     new Lazy<List<MonsterInfo>>(() => x.DeployedObjects.Select(d => d?.Entity)
@@ -73,7 +74,7 @@ public class SkillDictionary
                 return value;
             }
 
-            return new SkillInfo(false, id, false, 0, null, new Lazy<List<MonsterInfo>>([]));
+            return new SkillInfo(false, id, false, false, 0, null, new Lazy<List<MonsterInfo>>([]));
         }
     }
 
