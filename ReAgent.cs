@@ -25,11 +25,13 @@ public sealed class ReAgent : BaseSettingsPlugin<ReAgentSettings>
     private RuleState _state;
     private List<SideEffectContainer> _pendingSideEffects = new List<SideEffectContainer>();
     private string _profileToDelete = null;
-
     public Dictionary<string, List<string>> CustomAilments { get; set; } = new Dictionary<string, List<string>>();
+    public static int ProcessID { get; private set; }
 
     public override bool Initialise()
     {
+        ProcessID = GameController.Window.Process.Id;
+
         var stringData = File.ReadAllText(Path.Join(DirectoryFullName, "CustomAilments.json"));
         CustomAilments = JsonConvert.DeserializeObject<Dictionary<string, List<string>>>(stringData);
         Settings.DumpState.OnPressed = () =>
@@ -52,7 +54,15 @@ public sealed class ReAgent : BaseSettingsPlugin<ReAgentSettings>
     {
         base.DrawSettings();
 
-        _state = new RuleState(this) { InternalState = _internalState };
+        try
+        {
+            _state = new RuleState(this) { InternalState = _internalState };
+        }
+        catch (Exception ex)
+        {
+            LogError(ex.ToString());
+        }
+
         if (ImGui.BeginTabBar("Profiles", ImGuiTabBarFlags.AutoSelectNewTabs | ImGuiTabBarFlags.FittingPolicyScroll | ImGuiTabBarFlags.Reorderable))
         {
             if (ImGui.TabItemButton("+##addProfile", ImGuiTabItemFlags.Trailing))
@@ -195,8 +205,8 @@ public sealed class ReAgent : BaseSettingsPlugin<ReAgentSettings>
         _internalState.TextToDisplay.Clear();
         _internalState.GraphicToDisplay.Clear();
         _internalState.ProgressBarsToDisplay.Clear();
-        _internalState.CanPressKey = _sinceLastKeyPress.ElapsedMilliseconds >= Settings.GlobalKeyPressCooldown;
         _internalState.ChatTitlePanelVisible = GameController.IngameState.IngameUi.ChatTitlePanel.IsVisible;
+        _internalState.CanPressKey = _sinceLastKeyPress.ElapsedMilliseconds >= Settings.GlobalKeyPressCooldown && !_internalState.ChatTitlePanelVisible;
         _internalState.LeftPanelVisible = GameController.IngameState.IngameUi.OpenLeftPanel.IsVisible;
         _internalState.RightPanelVisible = GameController.IngameState.IngameUi.OpenRightPanel.IsVisible;
         _internalState.LargePanelVisible = GameController.IngameState.IngameUi.LargePanels.Any(p => p.IsVisible);

@@ -3,10 +3,6 @@ using ExileCore.PoEMemory.Components;
 using ExileCore.PoEMemory.MemoryObjects;
 using ExileCore.Shared.Enums;
 using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
 
 namespace ReAgent.State;
 
@@ -37,24 +33,26 @@ public class SkillDictionary
                     ? lifeComponent.CurHP
                     : lifeComponent.CurES + lifeComponent.CurHP;
 
-            var actorSkillsCooldownDict = actor.ActorSkills.Join(
-                actor.ActorSkillsCooldowns,
-                skill => skill.Id,
-                cooldown => cooldown.Id,
-                (skill, cooldown) => new { skill.InternalName, cooldown })
-                .ToDictionary(item => item.InternalName, item => item.cooldown);
+            var currentEsPool = lifeComponent?.CurES ?? 10000;
 
             _source = new Lazy<Dictionary<string, SkillInfo>>(() => actor.ActorSkills
                 .Where(x => !string.IsNullOrWhiteSpace(x.Name))
                 .DistinctBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
-                .Select(x => new SkillInfo(true, x.Name,
+                .Select(x => new SkillInfo(true,
+                    x.Name,
                     x.CanBeUsed &&
                     x.CanBeUsedWithWeapon &&
                     x.Cost <= currentManaPool &&
-                    x.GetStat(GameStat.LifeCost) < currentHpPool,
-                    x.IsOnCooldown,
-                    x.GetStat(GameStat.LifeCost),
-                    actorSkillsCooldownDict.ContainsKey(x.InternalName) ? actorSkillsCooldownDict[x.InternalName] : null,
+                    x.LifeCost <= currentHpPool &&
+                    x.EsCost <= currentEsPool,
+                    x.IsUsing,
+                    x.SkillUseStage,
+                    x.Cost,
+                    x.LifeCost,
+                    x.EsCost,
+                    x.CooldownInfo?.MaxUses ?? 1,
+                    x.RemainingUses,
+                    x.CooldownInfo?.SkillCooldowns.Select(c => c.Remaining).ToList() ?? [],
                     new Lazy<List<MonsterInfo>>(() => x.DeployedObjects.Select(d => d?.Entity)
                             .Where(e => e != null)
                             .Select(e => new MonsterInfo(controller, e))
@@ -74,7 +72,7 @@ public class SkillDictionary
                 return value;
             }
 
-            return new SkillInfo(false, id, false, false, 0, null, new Lazy<List<MonsterInfo>>([]));
+            return new SkillInfo(false, id, false, false, 0, 0, 0, 0, 0, 0, [], new Lazy<List<MonsterInfo>>([]));
         }
     }
 
